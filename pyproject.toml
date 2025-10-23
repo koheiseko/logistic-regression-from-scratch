@@ -14,3 +14,6 @@ dependencies = [
     "seaborn",
     "setuptools",
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
