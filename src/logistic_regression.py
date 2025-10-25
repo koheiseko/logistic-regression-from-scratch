@@ -2,59 +2,58 @@ import numpy as np
 
 class LogisticRegression_():
     def __init__(self, random_state=42):
-        self._coef = list()
-        self._intercept = int()
-        self.random_state = np.random.seed(random_state)
+        self._coef = None
+        self._intercept = None
 
-    def _sigmoid(self, xi):
-        return 1 / (1 + np.exp(-xi))
+        self.random_state = random_state
+        self._rng = np.random.default_rng(self.random_state)
 
-    def _cost_function(self, yi, pi):
-        if yi == 1:
-            return -np.log(pi)
-        else:
-            return -np.log(1 - pi)
-
+    def _sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
+    
     def _log_loss(self, y, p):
-        m = y.shape[0]
     
-        cost = sum([self._cost_function(pi, yi) for pi, yi in zip(p, y)])
+        cost = -np.mean((y * np.log(p)) + ((1 - y) * np.log(1 - p)))
 
-        return 1 / m * cost 
+        return cost 
     
-    def _gradient(self, X, y, h):
+    def _gradient(self, X, y, probabilities):
         m = y.shape[0]
     
-        return (X.T @ (h - y)) / m
+        return (X.T @ (probabilities - y)) / m
 
     def fit(self, X, y, epochs=100, learning_rate=0.001):
 
-        self._intercept, self._coef = np.array([0]), np.random.randn(X.shape[1])
+        self._intercept = np.array([0]) 
+        self._coef = self._rng.random(X.shape[1])
+
         theta = np.concatenate((self._intercept, self._coef))
         
         X = np.c_[np.ones(X.shape[0]), X]
         z = X @ theta
-        h = np.array([self._sigmoid(zi) for zi in z])
+        probabilities = self._sigmoid(z)
 
         for _ in range(epochs):
-            gradients = self._gradient(X, y, h)
+            gradients = self._gradient(X, y, probabilities)
             
             theta = theta - learning_rate * gradients
 
             z = X @ theta
-            h = np.array([self._sigmoid(zi) for zi in z])
+            probabilities = self._sigmoid(z) 
         
         self._intercept, self._coef = np.array([theta[0]]), theta[1:]
 
         return self
+    
+    def predict_proba(self, X):
+        if self._coef is None or self._intercept is None:
+            raise ValueError("The model has not been trained yet, call fit() first")
         
-    def predict(self, X, threshould=0.5):
-        theta = np.concatenate((self._intercept, self._coef))
+        z = (X @ self._coef) + self._intercept
 
-        X = np.c_[np.ones(X.shape[0]), X]
+        return self._sigmoid(z)
+        
+    def predict(self, X, threshold=0.5):
+        probabilites = self.predict_proba(X)
 
-        z = X @ theta
-
-        y_pred = (np.array([self._sigmoid(zi) for zi in z]) >= threshould).astype(int)
-
-        return y_pred
+        return (probabilites >= threshold).astype(int)
